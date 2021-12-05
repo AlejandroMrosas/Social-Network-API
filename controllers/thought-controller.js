@@ -3,32 +3,46 @@ const { Thought, User} = require('../models');
 const thoughtController = {
   allThoughts(req, res) {
     Thought.find({})
-    .then(dbThoughtData => res.json(dbThoughtData))
-    .catch(err => {
-      console.log(err);
-      res.status(400).json(err);
-    });
-  }, 
-
-  throughById({ params }, res) {
-    Thought.findOne({ _id: params.id })
+    .populate({ 
+      path: 'reaction',
+      select: '-__v'
+    })
+      .select('-__v')
       .then(dbThoughtData => {
-        if (!dbThoughtData) {
-          res.status(404).json({ message: 'No thought found with this id!' });
-          return;
-        }
         res.json(dbThoughtData);
       })
       .catch(err => {
-        console.log(err);
-        res.status(400).json(err);
-      });
+        res.json(err);
+      })
+  },
+
+  throughById({ params }, res) {
+    Thought.findOne({ _id: params.id })
+    .populate({ 
+      path: 'reaction',
+      select: '-__v'
+    })
+      .select('-__v')
+      .then(dbThoughtData => {
+        res.json(dbThoughtData);
+      })
+      .catch(err => {
+        res.json(err);
+      })
   },
 
   createThrough({ body }, res) {
     Thought.create(body)
-    .then(dbThoughtData => res.json(dbThoughtData))
-    .catch(err => res.json(err));
+    .then(({ _id }) =>
+      User.findOneAndUpdate({}, { $push: { notes: _id } }, { new: true })
+    )
+    .then(dbUser => {
+      res.json(dbUser);
+    })
+    .catch(err => {
+      res.json(err);
+    });
+
   },
 
   updateThroughById({ params, body }, res) {
@@ -45,9 +59,17 @@ const thoughtController = {
 
   deleteThroughById({ params }, res) {
     Thought.findOneAndDelete({ _id: params.id })
-      .then(dbThoughtData => res.json(dbThoughtData))
-      .catch(err => res.json(err));
+    .then(dbThoughtData => {
+      if (!dbThoughtData) {
+        res.json({ message: 'No note found with this id!' });
+        return;
+      }
+      res.json(dbThoughtData);
+    })
+    .catch(err => {
+      res.json(err);
+    });
   }
-};
+}
 
 module.exports = thoughtController;
